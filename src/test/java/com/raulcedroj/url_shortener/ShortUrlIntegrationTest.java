@@ -80,4 +80,11 @@ class ShortUrlIntegrationTest {
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.clicks").value(2)));
     }
+
+    @Test
+    void exposesOpenApiDocumentation() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.info.title").value("URL Shortener API"));
+    }
 }

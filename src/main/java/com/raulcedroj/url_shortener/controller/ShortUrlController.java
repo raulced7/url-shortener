@@ -9,7 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ProblemDetail;
 
+@Tag(name = "Short URLs", description = "Create short URLs and check their statistics")
 @RestController
 @RequestMapping("/api/urls")
 public class ShortUrlController {
@@ -20,6 +27,10 @@ public class ShortUrlController {
         this.service = service;
     }
 
+    @Operation(summary = "Create a short URL")
+    @ApiResponse(responseCode = "201", description = "Short URL created")
+    @ApiResponse(responseCode = "400", description = "Invalid URL",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @PostMapping
     public ResponseEntity<ShortUrlResponse> shorten(@Valid @RequestBody ShortenRequest request) {
         ShortUrl shortUrl = service.shorten(request.url());
@@ -29,6 +40,10 @@ public class ShortUrlController {
                 .body(ShortUrlResponse.from(shortUrl, link));
     }
 
+    @Operation(summary = "Get the statistics of a short URL")
+    @ApiResponse(responseCode = "200", description = "Statistics found")
+    @ApiResponse(responseCode = "404", description = "Code not found",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @GetMapping("/{code}")
     public ShortUrlResponse getStats(@PathVariable String code) {
         ShortUrl shortUrl = service.resolve(code);
