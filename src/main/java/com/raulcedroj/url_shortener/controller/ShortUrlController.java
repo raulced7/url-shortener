@@ -6,12 +6,8 @@ import com.raulcedroj.url_shortener.entity.ShortUrl;
 import com.raulcedroj.url_shortener.service.ShortUrlService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
 import java.net.URI;
 
 @RestController
@@ -27,13 +23,22 @@ public class ShortUrlController {
     @PostMapping
     public ResponseEntity<ShortUrlResponse> shorten(@Valid @RequestBody ShortenRequest request) {
         ShortUrl shortUrl = service.shorten(request.url());
+        String link = buildShortUrl(shortUrl.getCode());
 
-        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+        return ResponseEntity.created(URI.create(link))
+                .body(ShortUrlResponse.from(shortUrl, link));
+    }
+
+    @GetMapping("/{code}")
+    public ShortUrlResponse getStats(@PathVariable String code) {
+        ShortUrl shortUrl = service.resolve(code);
+        return ShortUrlResponse.from(shortUrl, buildShortUrl(code));
+    }
+
+    private String buildShortUrl(String code) {
+        return ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/{code}")
-                .buildAndExpand(shortUrl.getCode())
-                .toUri();
-
-        return ResponseEntity.created(location)
-                .body(ShortUrlResponse.from(shortUrl, location.toString()));
+                .buildAndExpand(code)
+                .toUriString();
     }
 }

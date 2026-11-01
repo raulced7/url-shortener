@@ -13,10 +13,14 @@ public class ShortUrlService {
 
     private final ShortUrlRepository repository;
     private final ShortCodeGenerator codeGenerator;
+    private final ClickTracker clickTracker;
 
-    public ShortUrlService(ShortUrlRepository repository, ShortCodeGenerator codeGenerator) {
+    public ShortUrlService(ShortUrlRepository repository,
+                           ShortCodeGenerator codeGenerator,
+                           ClickTracker clickTracker) {
         this.repository = repository;
         this.codeGenerator = codeGenerator;
+        this.clickTracker = clickTracker;
     }
 
     @Transactional
@@ -34,5 +38,13 @@ public class ShortUrlService {
     public ShortUrl resolve(String code) {
         return repository.findByCode(code)
                 .orElseThrow(() -> new ShortUrlNotFoundException(code));
+    }
+
+    public String getRedirectUrl(String code) {
+        String originalUrl = repository.findByCode(code)
+                .orElseThrow(() -> new ShortUrlNotFoundException(code))
+                .getOriginalUrl();
+        clickTracker.recordClick(code);
+        return originalUrl;
     }
 }

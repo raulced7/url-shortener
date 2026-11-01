@@ -20,10 +20,8 @@ public class RedirectController {
 
     @GetMapping("/{code:[0-9a-zA-Z]{7}}")
     public ResponseEntity<Void> redirect(@PathVariable String code) {
-        String originalUrl = service.resolve(code).getOriginalUrl();
-
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(originalUrl))
+                .location(URI.create(service.getRedirectUrl(code)))
                 .build();
     }
 }

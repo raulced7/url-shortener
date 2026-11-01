@@ -9,6 +9,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Duration;
+
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -55,5 +58,26 @@ class ShortUrlIntegrationTest {
         mockMvc.perform(get("/abcdefg"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Short URL not found"));
+    }
+
+    @Test
+    void countsClicksOnEachRedirect() throws Exception {
+        String response = mockMvc.perform(post("/api/urls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "url": "https://www.github.com" }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String code = JsonPath.read(response, "$.code");
+
+        mockMvc.perform(get("/{code}", code)).andExpect(status().isFound());
+        mockMvc.perform(get("/{code}", code)).andExpect(status().isFound());
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                mockMvc.perform(get("/api/urls/{code}", code))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.clicks").value(2)));
     }
 }

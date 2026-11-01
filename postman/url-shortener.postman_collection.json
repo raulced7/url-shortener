@@ -1,0 +1,242 @@
+{
+  "info": {
+    "name": "URL Shortener",
+    "description": "API de acortador de URLs (Java 25, Spring Boot 4, PostgreSQL). Ejecuta primero «Create short URL»: guarda el código en la variable {{code}} que usan las demás peticiones.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "code",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Create short URL",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/urls",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "urls"
+          ]
+        },
+        "description": "Crea una URL corta y guarda el código en {{code}}.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"url\": \"https://www.github.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+              "pm.test('Has Location header', () => pm.response.to.have.header('Location'));",
+              "const body = pm.response.json();",
+              "pm.test('Code has 7 base62 characters', () => pm.expect(body.code).to.match(/^[0-9a-zA-Z]{7}$/));",
+              "pm.test('Starts with 0 clicks', () => pm.expect(body.clicks).to.eql(0));",
+              "pm.collectionVariables.set('code', body.code);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Redirect (counts a click)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/{{code}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "{{code}}"
+          ]
+        },
+        "description": "Redirección a la URL original. Cada envío suma un clic (se registra de forma asíncrona)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 302 Found', () => pm.response.to.have.status(302));",
+              "pm.test('Location points to original URL', () => pm.expect(pm.response.headers.get('Location')).to.match(/^https?:\\/\\//));"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "followRedirects": false
+      }
+    },
+    {
+      "name": "Get stats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/urls/{{code}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "urls",
+            "{{code}}"
+          ]
+        },
+        "description": "Estadísticas de la URL corta, incluido el número de clics."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Returns the same code', () => pm.expect(body.code).to.eql(pm.collectionVariables.get('code')));",
+              "pm.test('Clicks is a number', () => pm.expect(body.clicks).to.be.a('number'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Errors",
+      "item": [
+        {
+          "name": "Invalid URL (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/urls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "urls"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"hola\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown code - stats (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/urls/noexiste",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "urls",
+                "noexiste"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('ProblemDetail title', () => pm.expect(pm.response.json().title).to.eql('Short URL not found'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown code - redirect (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/abcdefg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "abcdefg"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "followRedirects": false
+          }
+        }
+      ]
+    }
+  ]
+}
