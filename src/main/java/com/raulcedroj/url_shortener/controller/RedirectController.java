@@ -30,6 +30,7 @@ public class RedirectController {
     @ApiResponse(responseCode = "302", description = "Redirect to the original URL")
     @ApiResponse(responseCode = "404", description = "Code not found",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "410", description = "Short URL expired")
     @GetMapping("/{code:[0-9a-zA-Z]{7}}")
     public ResponseEntity<Void> redirect(@PathVariable String code) {
         return ResponseEntity.status(HttpStatus.FOUND)

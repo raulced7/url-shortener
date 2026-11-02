@@ -2,6 +2,9 @@ package com.raulcedroj.url_shortener;
 
 import com.jayway.jsonpath.JsonPath;
 import com.raulcedroj.url_shortener.config.RateLimitProperties;
+import com.raulcedroj.url_shortener.entity.ShortUrl;
+import com.raulcedroj.url_shortener.repository.ShortUrlRepository;
+import com.raulcedroj.url_shortener.service.ExpiredUrlCleanup;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Duration;
+import java.time.Instant;
 
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -33,6 +37,12 @@ class ShortUrlIntegrationTest {
 
     @Autowired
     private RateLimitProperties rateLimitProperties;
+
+    @Autowired
+    private ShortUrlRepository repository;
+
+    @Autowired
+    private ExpiredUrlCleanup expiredUrlCleanup;
 
     @Test
     void shortensUrlAndRedirectsToOriginal() throws Exception {
@@ -139,5 +149,30 @@ class ShortUrlIntegrationTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
                 .andExpect(jsonPath("$.title").value("Too many requests"));
+    }
+
+    @Test
+    void returnsGoneForExpiredUrlAndCleanupRemovesIt() throws Exception {
+        repository.save(new ShortUrl("expired", "https://www.github.com",
+                Instant.now().minusSeconds(60)));
+
+        mockMvc.perform(get("/expired"))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.title").value("Short URL expired"));
+
+        expiredUrlCleanup.removeExpiredUrls();
+
+        assertThat(repository.existsByCode("expired")).isFalse();
+        mockMvc.perform(get("/expired")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejectsExpirationDateInThePast() throws Exception {
+        mockMvc.perform(post("/api/urls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "url": "https://www.github.com", "expiresAt": "2020-01-01T00:00:00Z" }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 }

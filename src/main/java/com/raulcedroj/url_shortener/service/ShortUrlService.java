@@ -6,6 +6,8 @@ import com.raulcedroj.url_shortener.repository.ShortUrlRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 public class ShortUrlService {
 
@@ -27,11 +29,11 @@ public class ShortUrlService {
     }
 
     @Transactional
-    public ShortUrl shorten(String originalUrl) {
+    public ShortUrl shorten(String originalUrl, Instant expiresAt) {
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             String code = codeGenerator.generate();
             if (!repository.existsByCode(code)) {
-                return repository.save(new ShortUrl(code, originalUrl));
+                return repository.save(new ShortUrl(code, originalUrl, expiresAt));
             }
         }
         throw new IllegalStateException("No se ha podido generar un código único");

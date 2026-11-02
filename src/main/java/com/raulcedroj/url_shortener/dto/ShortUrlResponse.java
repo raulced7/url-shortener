@@ -10,10 +10,11 @@ public record ShortUrlResponse(
         String shortUrl,
         String originalUrl,
         long clicks,
-        Instant createdAt
+        Instant createdAt,
+        Instant expiresAt
 ) {
     public static ShortUrlResponse from(ShortUrl entity, String shortUrl) {
         return new ShortUrlResponse(entity.getCode(), shortUrl, entity.getOriginalUrl(),
-                entity.getClicks(), entity.getCreatedAt());
+                entity.getClicks(), entity.getCreatedAt(), entity.getExpiresAt());
     }
 }

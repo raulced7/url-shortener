@@ -35,7 +35,7 @@ public class ShortUrlController {
     @ApiResponse(responseCode = "429", description = "Rate limit exceeded",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     public ResponseEntity<ShortUrlResponse> shorten(@Valid @RequestBody ShortenRequest request) {
-        ShortUrl shortUrl = service.shorten(request.url());
+        ShortUrl shortUrl = service.shorten(request.url(), request.expiresAt());
         String link = buildShortUrl(shortUrl.getCode());
 
         return ResponseEntity.created(URI.create(link))

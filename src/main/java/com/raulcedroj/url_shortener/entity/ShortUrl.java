@@ -24,6 +24,9 @@ public class ShortUrl {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
     protected ShortUrl() {
     }
 
@@ -32,6 +35,17 @@ public class ShortUrl {
         this.originalUrl = originalUrl;
         this.createdAt = Instant.now();
     }
+
+    public ShortUrl(String code, String originalUrl, Instant expiresAt) {
+        this(code, originalUrl);
+        this.expiresAt = expiresAt;
+    }
+
+    public boolean isExpired(Instant now) {
+        return expiresAt != null && !expiresAt.isAfter(now);
+    }
+
+    public Instant getExpiresAt() { return expiresAt; }
 
     public Long getId() { return id; }
     public String getCode() { return code; }

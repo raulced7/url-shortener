@@ -28,4 +28,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
                 .body(problem);
     }
+
+    @ExceptionHandler(ShortUrlExpiredException.class)
+    public ProblemDetail handleExpired(ShortUrlExpiredException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.GONE, ex.getMessage());
+        problem.setTitle("Short URL expired");
+        return problem;
+    }
 }
