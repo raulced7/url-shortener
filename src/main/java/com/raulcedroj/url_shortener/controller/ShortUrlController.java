@@ -32,6 +32,8 @@ public class ShortUrlController {
     @ApiResponse(responseCode = "400", description = "Invalid URL",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @PostMapping
+    @ApiResponse(responseCode = "429", description = "Rate limit exceeded",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     public ResponseEntity<ShortUrlResponse> shorten(@Valid @RequestBody ShortenRequest request) {
         ShortUrl shortUrl = service.shorten(request.url());
         String link = buildShortUrl(shortUrl.getCode());

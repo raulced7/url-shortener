@@ -1,6 +1,7 @@
 package com.raulcedroj.url_shortener;
 
 import com.jayway.jsonpath.JsonPath;
+import com.raulcedroj.url_shortener.config.RateLimitProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Duration;
 
@@ -28,6 +30,9 @@ class ShortUrlIntegrationTest {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private RateLimitProperties rateLimitProperties;
 
     @Test
     void shortensUrlAndRedirectsToOriginal() throws Exception {
@@ -111,5 +116,28 @@ class ShortUrlIntegrationTest {
         mockMvc.perform(get("/{code}", code)).andExpect(status().isFound());
 
         assertThat(redisTemplate.opsForValue().get(cacheKey)).isEqualTo("https://spring.io");
+    }
+
+    @Test
+    void limitsUrlCreationPerIp() throws Exception {
+        RequestPostProcessor fromSameIp = request -> {
+            request.setRemoteAddr("203.0.113.10");
+            return request;
+        };
+        String body = """
+                { "url": "https://www.github.com" }
+                """;
+
+        for (int i = 0; i < rateLimitProperties.requestsPerMinute(); i++) {
+            mockMvc.perform(post("/api/urls").with(fromSameIp)
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isCreated());
+        }
+
+        mockMvc.perform(post("/api/urls").with(fromSameIp)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.title").value("Too many requests"));
     }
 }

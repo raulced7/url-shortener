@@ -8,3 +8,6 @@ spring:
   threads:
     virtual:
       enabled: true
+app:
+  rate-limit:
+    requests-per-minute: 10
